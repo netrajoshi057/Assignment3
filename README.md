@@ -454,10 +454,7 @@ class StatusBar(tk.Frame):
         self._score_var.set("Score: 0")
         self._hint_label.config(text="")
 
-
-# ===========================================================================
 # GameApp — root application window
-# ===========================================================================
 
 class GameApp(tk.Tk):
     """
@@ -500,14 +497,12 @@ class GameApp(tk.Tk):
         # --- Build all widgets ---
         self._build_ui()
 
-    # -----------------------------------------------------------------------
     # UI construction
-    # -----------------------------------------------------------------------
 
     def _build_ui(self) -> None:
         """Create and lay out all widgets in the window."""
 
-        # ── Header bar ──────────────────────────────────────────────────────
+        # ── Header bar 
         header = tk.Frame(self, bg=PALETTE["bg"])
         header.pack(fill=tk.X, padx=20, pady=(16, 4))
 
@@ -525,7 +520,7 @@ class GameApp(tk.Tk):
             fg=PALETTE["subtext"], bg=PALETTE["bg"],
         ).pack(side=tk.RIGHT)
 
-        # ── Button row ──────────────────────────────────────────────────────
+        # ── Button row 
         btn_bar = tk.Frame(self, bg=PALETTE["bg"])
         btn_bar.pack(fill=tk.X, padx=20, pady=8)
 
@@ -600,9 +595,7 @@ class GameApp(tk.Tk):
             justify=tk.LEFT, anchor="w",
         ).pack(fill=tk.X)
 
-    # -----------------------------------------------------------------------
     # Button command handlers
-    # -----------------------------------------------------------------------
 
     def _load_image(self) -> None:
         """Open a file dialog, load the chosen image, and start a new round."""
@@ -654,9 +647,7 @@ class GameApp(tk.Tk):
         self._reveal_btn.config(state=tk.DISABLED)
         self._update_history()
 
-    # -----------------------------------------------------------------------
     # GameState callback handlers (fired by GameState, executed on GUI thread)
-    # -----------------------------------------------------------------------
 
     def _on_difference_found(self, region: DifferenceRegion) -> None:
         """Called by GameState when the player correctly identifies a difference."""
@@ -701,17 +692,14 @@ class GameApp(tk.Tk):
             self._update_history()
             last = self._state.history[-1]
             messagebox.showinfo(
-                "Congratulations! 🎉",
+                "Congratulations!",
                 f"You found all {GameState.NUM_DIFFERENCES} differences!\n\n"
                 f"Mistakes this round:   {last.mistakes}\n"
                 f"Points earned:         {last.score}\n"
                 f"Total score:           {self._state.total_score}\n\n"
                 "Load another image to keep playing.",
             )
-
-    # -----------------------------------------------------------------------
     # Click forwarding
-    # -----------------------------------------------------------------------
 
     def _on_image_click(self, x: int, y: int) -> None:
         """
@@ -721,9 +709,7 @@ class GameApp(tk.Tk):
         if not self._state.round_over:
             self._state.process_click(x, y)
 
-    # -----------------------------------------------------------------------
     # Image rendering helpers
-    # -----------------------------------------------------------------------
 
     def _refresh_images(self) -> None:
         """
