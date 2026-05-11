@@ -36,10 +36,7 @@ class RoundResult:
         """Points earned: +10 per found difference, -3 per mistake, min 0."""
         return max(0, self.found * 10 - self.mistakes * 3)
 
-
-# ===========================================================================
 # GameState — the central game state machine
-# ===========================================================================
 
 class GameState:
     """
