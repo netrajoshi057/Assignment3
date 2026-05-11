@@ -203,9 +203,7 @@ class GameState:
         self._end_round(revealed=True)
         return unfound
 
-    # -----------------------------------------------------------------------
     # Private helpers
-    # -----------------------------------------------------------------------
 
     def _end_round(self, revealed: bool) -> None:
         """
@@ -253,9 +251,7 @@ from PIL import Image, ImageTk
 from image_processor import ImageProcessor, DifferenceRegion
 from game_state import GameState
 
-# ---------------------------------------------------------------------------
 # Colour palette — dark theme with gold accent
-# ---------------------------------------------------------------------------
 PALETTE = {
     "bg":       "#0f1117",    # main background
     "panel":    "#1a1d27",    # image panel background
@@ -268,10 +264,7 @@ PALETTE = {
     "border":   "#2e3044",    # widget borders
 }
 
-
-# ===========================================================================
 # ImagePanel — reusable image display widget (inherits tk.Frame)
-# ===========================================================================
 
 class ImagePanel(tk.Frame):
     """
@@ -328,9 +321,7 @@ class ImagePanel(tk.Frame):
 
         self._show_placeholder()
 
-    # -----------------------------------------------------------------------
     # Public methods
-    # -----------------------------------------------------------------------
 
     def update_image(self, bgr_image: np.ndarray) -> None:
         """
@@ -374,9 +365,7 @@ class ImagePanel(tk.Frame):
             lambda: self._canvas.config(highlightbackground=PALETTE["border"])
         )
 
-    # -----------------------------------------------------------------------
     # Private helpers
-    # -----------------------------------------------------------------------
 
     def _show_placeholder(self) -> None:
         """Draw a placeholder message on the blank canvas."""
@@ -397,10 +386,7 @@ class ImagePanel(tk.Frame):
         if self._clickable and self._click_callback:
             self._click_callback(event.x, event.y)
 
-
-# ===========================================================================
 # StatusBar — HUD display widget (inherits tk.Frame)
-# ===========================================================================
 
 class StatusBar(tk.Frame):
     """
