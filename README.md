@@ -15,10 +15,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Tuple, Callable
 from image_processor import DifferenceRegion
 
-
-# ===========================================================================
 # RoundResult — immutable snapshot of a completed round
-# ===========================================================================
 
 @dataclass(frozen=True)
 class RoundResult:
@@ -79,9 +76,7 @@ class GameState:
         # Called specifically when the player reaches MAX_MISTAKES
         self.on_locked_out:     Optional[Callable[[], None]] = None
 
-    # -----------------------------------------------------------------------
     # Read-only properties (encapsulation — GUI reads but cannot write)
-    # -----------------------------------------------------------------------
 
     @property
     def total_score(self) -> int:
@@ -137,10 +132,7 @@ class GameState:
     def rounds_played(self) -> int:
         """Total rounds completed so far."""
         return len(self._history)
-
-    # -----------------------------------------------------------------------
     # Public methods
-    # -----------------------------------------------------------------------
 
     def start_round(self, differences: List[DifferenceRegion]) -> None:
         """
