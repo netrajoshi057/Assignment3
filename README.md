@@ -1175,3 +1175,16 @@ class ImageProcessor:
                 return True
         return False
 
+
+#Entry point for the Spot-the-Difference desktop application.
+from gui import GameApp
+
+
+def main() -> None:
+    #Create and start the Tkinter application
+    app = GameApp()
+    app.mainloop()
+
+
+if __name__ == "__main__":
+    main()
