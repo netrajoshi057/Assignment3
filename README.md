@@ -1149,3 +1149,321 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
+
+assignment 3 by jeetika
+from __future__ import annotations
+
+import random
+import tkinter as tk
+from tkinter import filedialog, messagebox
+
+import cv2
+import numpy as np
+from PIL import Image, ImageTk
+
+
+class Alteration:
+    def __init__(self, name: str):
+        self.name = name
+
+    def apply(self, image: np.ndarray, region: tuple) -> None:
+        raise NotImplementedError
+
+
+class ColourShiftAlteration(Alteration):
+    def __init__(self):
+        super().__init__("Colour Shift")
+
+    def apply(self, image: np.ndarray, region: tuple) -> None:
+        x, y, w, h = region
+        patch = image[y:y+h, x:x+w].copy()
+        hsv = cv2.cvtColor(patch, cv2.COLOR_BGR2HSV).astype(np.int32)
+        hsv[:, :, 0] = (hsv[:, :, 0] + random.randint(30, 70)) % 180
+        image[y:y+h, x:x+w] = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
+
+
+class BrightnessAlteration(Alteration):
+    def __init__(self):
+        super().__init__("Brightness")
+
+    def apply(self, image: np.ndarray, region: tuple) -> None:
+        x, y, w, h = region
+        patch = image[y:y+h, x:x+w].astype(np.int32)
+        patch = np.clip(patch + random.choice([-60, 60]), 0, 255)
+        image[y:y+h, x:x+w] = patch.astype(np.uint8)
+
+
+class BlurAlteration(Alteration):
+    def __init__(self):
+        super().__init__("Blur")
+
+    def apply(self, image: np.ndarray, region: tuple) -> None:
+        x, y, w, h = region
+        patch = image[y:y+h, x:x+w]
+        image[y:y+h, x:x+w] = cv2.GaussianBlur(patch, (21, 21), 0)
+
+
+class ContrastAlteration(Alteration):
+    def __init__(self):
+        super().__init__("Contrast")
+
+    def apply(self, image: np.ndarray, region: tuple) -> None:
+        x, y, w, h = region
+        patch = image[y:y+h, x:x+w].astype(np.float32)
+        image[y:y+h, x:x+w] = np.clip(patch * 1.8, 0, 255).astype(np.uint8)
+
+
+class DifferenceRegion:
+    def __init__(self, x: int, y: int, w: int, h: int, alteration: Alteration):
+        self.x = x
+        self.y = y
+        self.w = w
+        self.h = h
+        self.alteration = alteration
+        self.found = False
+        self.center = (x + w // 2, y + h // 2)
+        self.radius = max(w, h) // 2 + 18
+
+    def is_clicked(self, cx: int, cy: int) -> bool:
+        dx = cx - self.center[0]
+        dy = cy - self.center[1]
+        return (dx * dx + dy * dy) ** 0.5 <= self.radius
+
+    def mark_found(self) -> None:
+        self.found = True
+
+
+class ImageProcessor:
+    NUM_DIFFERENCES = 5
+    PATCH_W = 70
+    PATCH_H = 70
+    OVERLAP_MARGIN = 25
+
+    def __init__(self):
+        self.alterations = [
+            ColourShiftAlteration(),
+            BrightnessAlteration(),
+            BlurAlteration(),
+            ContrastAlteration()
+        ]
+
+    def load_image(self, path: str) -> np.ndarray:
+        img = cv2.imread(path)
+        if img is None:
+            raise ValueError("Cannot read image.")
+        return img
+
+    def generate_differences(self, original: np.ndarray):
+        h, w = original.shape[:2]
+        modified = original.copy()
+        regions = []
+
+        attempts = 0
+        while len(regions) < self.NUM_DIFFERENCES and attempts < 2000:
+            attempts += 1
+            x = random.randint(5, w - self.PATCH_W - 5)
+            y = random.randint(5, h - self.PATCH_H - 5)
+
+            if self.overlaps(x, y, self.PATCH_W, self.PATCH_H, regions):
+                continue
+
+            alteration = random.choice(self.alterations)
+            region = DifferenceRegion(x, y, self.PATCH_W, self.PATCH_H, alteration)
+            alteration.apply(modified, (x, y, self.PATCH_W, self.PATCH_H))
+            regions.append(region)
+
+        return modified, regions
+
+    def overlaps(self, x, y, w, h, regions):
+        m = self.OVERLAP_MARGIN
+        for r in regions:
+            if not (x + w + m <= r.x or x >= r.x + r.w + m or
+                    y + h + m <= r.y or y >= r.y + r.h + m):
+                return True
+        return False
+
+    def draw_circle(self, image, region, color):
+        cv2.circle(image, region.center, region.radius, color, 3)
+
+    def to_photo_image(self, cv2_img, max_w=560, max_h=480):
+        h, w = cv2_img.shape[:2]
+        scale = min(max_w / w, max_h / h, 1.0)
+
+        if scale < 1:
+            cv2_img = cv2.resize(cv2_img, (int(w * scale), int(h * scale)))
+
+        rgb = cv2.cvtColor(cv2_img, cv2.COLOR_BGR2RGB)
+        photo = ImageTk.PhotoImage(Image.fromarray(rgb))
+        return photo, scale
+
+
+class GameState:
+    MAX_MISTAKES = 3
+    TOTAL_PER_ROUND = 5
+
+    def __init__(self):
+        self.total_found = 0
+        self.mistakes = 0
+        self.found_this_round = 0
+
+    def reset_round(self):
+        self.mistakes = 0
+        self.found_this_round = 0
+
+    def register_find(self):
+        self.found_this_round += 1
+        self.total_found += 1
+
+    def register_mistake(self):
+        self.mistakes += 1
+
+    def remaining(self):
+        return self.TOTAL_PER_ROUND - self.found_this_round
+
+    def is_game_over(self):
+        return self.mistakes >= self.MAX_MISTAKES
+
+    def is_round_complete(self):
+        return self.found_this_round >= self.TOTAL_PER_ROUND
+
+    def can_click(self):
+        return not self.is_game_over() and not self.is_round_complete()
+
+
+class SpotTheDifferenceApp(tk.Tk):
+    FOUND_COLOR = (0, 0, 255)
+    REVEAL_COLOR = (255, 0, 0)
+
+    def __init__(self):
+        super().__init__()
+
+        self.title("Spot the Difference Game")
+        self.geometry("1200x700")
+
+        self.processor = ImageProcessor()
+        self.game_state = GameState()
+
+        self.original = None
+        self.modified = None
+        self.display_original = None
+        self.display_modified = None
+        self.regions = []
+        self.scale = 1.0
+
+        self.build_ui()
+
+    def build_ui(self):
+        title = tk.Label(self, text="Spot The Difference Game", font=("Arial", 24, "bold"))
+        title.pack(pady=10)
+
+        button_frame = tk.Frame(self)
+        button_frame.pack()
+
+        tk.Button(button_frame, text="Load Image", command=self.load_image, font=("Arial", 12)).pack(side=tk.LEFT, padx=10)
+        tk.Button(button_frame, text="Use Sample", command=self.use_sample, font=("Arial", 12)).pack(side=tk.LEFT, padx=10)
+        tk.Button(button_frame, text="Reveal", command=self.reveal, font=("Arial", 12)).pack(side=tk.LEFT, padx=10)
+
+        self.info_label = tk.Label(self, text="Load an image to start", font=("Arial", 14))
+        self.info_label.pack(pady=10)
+
+        image_frame = tk.Frame(self)
+        image_frame.pack(expand=True, fill=tk.BOTH)
+
+        self.left_canvas = tk.Canvas(image_frame, bg="gray", width=560, height=480)
+        self.left_canvas.pack(side=tk.LEFT, padx=20, expand=True)
+
+        self.right_canvas = tk.Canvas(image_frame, bg="gray", width=560, height=480, cursor="crosshair")
+        self.right_canvas.pack(side=tk.RIGHT, padx=20, expand=True)
+        self.right_canvas.bind("<Button-1>", self.check_click)
+
+    def load_image(self):
+        path = filedialog.askopenfilename(
+            filetypes=[("Images", "*.jpg *.jpeg *.png *.bmp")]
+        )
+        if path:
+            self.start_game(path)
+
+    def use_sample(self):
+        self.start_game("sample.png")
+
+    def start_game(self, path):
+        try:
+            self.original = self.processor.load_image(path)
+            self.modified, self.regions = self.processor.generate_differences(self.original)
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+            return
+
+        self.display_original = self.original.copy()
+        self.display_modified = self.modified.copy()
+        self.game_state.reset_round()
+
+        self.info_label.config(text="Find 5 differences on the right image.")
+        self.refresh()
+
+    def check_click(self, event):
+        if self.original is None or not self.game_state.can_click():
+            return
+
+        cx = int(event.x / self.scale)
+        cy = int(event.y / self.scale)
+
+        for region in self.regions:
+            if not region.found and region.is_clicked(cx, cy):
+                region.mark_found()
+                self.game_state.register_find()
+
+                self.processor.draw_circle(self.display_original, region, self.FOUND_COLOR)
+                self.processor.draw_circle(self.display_modified, region, self.FOUND_COLOR)
+
+                self.refresh()
+
+                if self.game_state.is_round_complete():
+                    messagebox.showinfo("Well Done", "You found all 5 differences!")
+                    self.info_label.config(text="All differences found!")
+                else:
+                    self.info_label.config(
+                        text=f"Correct! Remaining: {self.game_state.remaining()}"
+                    )
+                return
+
+        self.game_state.register_mistake()
+        self.refresh()
+
+        if self.game_state.is_game_over():
+            messagebox.showwarning("Game Over", "Too many mistakes!")
+            self.info_label.config(text="Game Over. Click Reveal or load a new image.")
+        else:
+            self.info_label.config(
+                text=f"Wrong spot. Mistakes: {self.game_state.mistakes}/3"
+            )
+
+    def reveal(self):
+        if self.display_original is None:
+            return
+
+        for region in self.regions:
+            if not region.found:
+                self.processor.draw_circle(self.display_original, region, self.REVEAL_COLOR)
+                self.processor.draw_circle(self.display_modified, region, self.REVEAL_COLOR)
+
+        self.refresh()
+        self.info_label.config(text="Differences revealed in blue.")
+
+    def refresh(self):
+        photo1, self.scale = self.processor.to_photo_image(self.display_original)
+        photo2, _ = self.processor.to_photo_image(self.display_modified)
+
+        self.left_canvas.delete("all")
+        self.right_canvas.delete("all")
+
+        self.left_canvas.create_image(0, 0, anchor=tk.NW, image=photo1)
+        self.right_canvas.create_image(0, 0, anchor=tk.NW, image=photo2)
+
+        self.left_canvas.image = photo1
+        self.right_canvas.image = photo2
+
+
+if __name__ == "__main__":
+    app = SpotTheDifferenceApp()
+    app.mainloop()
