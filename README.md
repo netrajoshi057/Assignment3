@@ -2,7 +2,7 @@
 #Identifying differences in images
 """
 game_state.py
-=============
+
 Manages all game logic — scoring, mistake tracking, round flow —
 completely separated from the GUI layer.
 
